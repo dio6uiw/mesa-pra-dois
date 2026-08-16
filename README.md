@@ -48,11 +48,20 @@ precisa permitir "instalar apps de fontes desconhecidas".
 
 ## iPhone (PWA)
 
-O build (`npm run build`) já sai como PWA instalável (manifest + service worker
-offline + ícones iOS). Basta hospedar a pasta `dist/` em qualquer URL HTTPS
-estática; no iPhone: abrir no Safari → Compartilhar → **Adicionar à Tela de Início**.
+**Publicado em: https://dio6uiw.github.io/mesa-pra-dois/**
+No iPhone: abrir no Safari → Compartilhar → **Adicionar à Tela de Início**.
 Vira app com ícone, tela cheia e funciona offline; os dados ficam no aparelho
 (IndexedDB) e sincronizam entre celulares pelo backup JSON de Ajustes.
+
+Para atualizar o site (repo `dio6uiw/mesa-pra-dois`, GitHub Pages na branch `gh-pages`):
+
+```bash
+npm run build
+cd dist
+git init -b gh-pages && git config credential.helper "!gh auth git-credential"
+git add -A && git commit -m "deploy" && git push --force https://github.com/dio6uiw/mesa-pra-dois.git gh-pages
+cd .. && rm -rf dist/.git
+```
 
 App iOS nativo: exige Mac com Xcode — `npx cap add ios` no Mac e o mesmo código compila.
 
