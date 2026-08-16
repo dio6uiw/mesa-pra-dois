@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mesa pra Dois</string>
+    <string name="title_activity_main">Mesa pra Dois</string>
+    <string name="package_name">com.mesapradois.app</string>
+    <string name="custom_url_scheme">com.mesapradois.app</string>
+</resources>

@@ -1,0 +1,9 @@
+{
+  "appId": "com.mesapradois.app",
+  "appName": "Mesa pra Dois",
+  "webDir": "dist",
+  "backgroundColor": "#f4f7fb",
+  "android": {
+    "allowMixedContent": false
+  }
+}
