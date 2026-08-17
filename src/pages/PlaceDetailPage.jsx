@@ -1,22 +1,30 @@
+import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 import { db } from '../db'
 import { aggPlace, fmtData, fmtMoeda, fmtNota, mediaAvaliador, notaVisita, PILARES } from '../logic'
 import { ScoreBadge, TierBadge, TipoBadge } from '../components/Badges'
 import { Stars } from '../components/StarInput'
+import { FotoViewer } from '../components/FotoViewer'
 import { useFeedback } from '../components/Feedback'
 
 export function PlaceDetailPage({ nav, params, settings }) {
   const { showToast, ask } = useFeedback()
+  const [fotoView, setFotoView] = useState(null) // { fotos, inicial }
   const place = useLiveQuery(() => db.places.get(params.placeId), [params.placeId])
   const visits = useLiveQuery(
     () => db.visits.where('placeId').equals(params.placeId).toArray(),
     [params.placeId]
   ) || []
 
+  const ordenadas = useMemo(
+    () => [...visits].sort((a, b) => (b.data || '').localeCompare(a.data || '')),
+    [visits]
+  )
+  const album = useMemo(() => ordenadas.flatMap(v => v.fotos || []), [ordenadas])
+
   if (!place) return <div className="page no-tabbar" />
   const agg = aggPlace(place, visits)
-  const ordenadas = [...visits].sort((a, b) => (b.data || '').localeCompare(a.data || ''))
   const nomes = settings.nomes
 
   async function excluirLugar() {
@@ -75,12 +83,28 @@ export function PlaceDetailPage({ nav, params, settings }) {
         <Plus size={19} /> Nova visita aqui
       </button>
 
+      {album.length > 0 && (
+        <>
+          <div className="card-label" style={{ margin: '18px 2px 10px' }}>
+            📸 Álbum · {album.length} {album.length === 1 ? 'foto' : 'fotos'}
+          </div>
+          <div className="foto-strip">
+            {album.map((f, i) => (
+              <button key={i} className="foto-mini"
+                onClick={() => setFotoView({ fotos: album, inicial: i })}>
+                <img src={f} alt="" loading="lazy" />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       <div className="card-label mt16" style={{ margin: '18px 2px 10px' }}>Histórico de visitas</div>
       {ordenadas.map(v => {
         const n1 = mediaAvaliador(v.notas?.p1)
         const n2 = mediaAvaliador(v.notas?.p2)
         return (
-          <button key={v.id} className="visit-item" style={{ width: '100%', textAlign: 'left' }}
+          <div key={v.id} className="visit-item" role="button" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
             onClick={() => nav.push('visit-form', { visitId: v.id })}>
             <div className="topo">
               <span className="data">{fmtData(v.data)}</span>
@@ -96,9 +120,24 @@ export function PlaceDetailPage({ nav, params, settings }) {
               </div>
             )}
             {v.obs && <div className="obs">“{v.obs}”</div>}
-          </button>
+            {v.fotos?.length > 0 && (
+              <div className="foto-strip mt8">
+                {v.fotos.map((f, i) => (
+                  <button key={i} className="foto-mini" style={{ width: 52, height: 52 }}
+                    onClick={e => { e.stopPropagation(); setFotoView({ fotos: v.fotos, inicial: i }) }}>
+                    <img src={f} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )
       })}
+
+      {fotoView && (
+        <FotoViewer fotos={fotoView.fotos} inicial={fotoView.inicial}
+          onClose={() => setFotoView(null)} />
+      )}
     </div>
   )
 }

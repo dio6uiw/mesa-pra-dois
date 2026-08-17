@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowLeft, Check, MapPin, Plus, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Camera, Check, MapPin, Plus, Search, Trash2, X } from 'lucide-react'
 import { db } from '../db'
 import { hojeISO, parseDecimal, PILARES } from '../logic'
+import { comprimirImagem } from '../img'
 import { StarInput } from '../components/StarInput'
 import { useFeedback } from '../components/Feedback'
+
+const MAX_FOTOS = 8
 
 const NOTAS_VAZIAS = { comida: 0, atendimento: 0, ambiente: 0 }
 
@@ -46,11 +49,13 @@ export function VisitFormPage({ nav, params, settings }) {
   const [data, setData] = useState(hojeISO())
   const [preco, setPreco] = useState('')
   const [obs, setObs] = useState('')
+  const [fotos, setFotos] = useState([])
   const [n1, setN1] = useState({ ...NOTAS_VAZIAS })
   const [n2, setN2] = useState({ ...NOTAS_VAZIAS })
   const [foi1, setFoi1] = useState(true)
   const [foi2, setFoi2] = useState(true)
   const [carregou, setCarregou] = useState(!editando)
+  const fotoRef = useRef(null)
 
   useEffect(() => {
     if (editando && visita && !carregou) {
@@ -58,6 +63,7 @@ export function VisitFormPage({ nav, params, settings }) {
       setData(visita.data || hojeISO())
       setPreco(visita.precoPessoa != null ? String(visita.precoPessoa).replace('.', ',') : '')
       setObs(visita.obs || '')
+      setFotos(visita.fotos || [])
       setN1(visita.notas?.p1 ? { ...NOTAS_VAZIAS, ...visita.notas.p1 } : { ...NOTAS_VAZIAS })
       setN2(visita.notas?.p2 ? { ...NOTAS_VAZIAS, ...visita.notas.p2 } : { ...NOTAS_VAZIAS })
       setFoi1(!!visita.notas?.p1)
@@ -95,6 +101,7 @@ export function VisitFormPage({ nav, params, settings }) {
       data,
       precoPessoa: parseDecimal(preco),
       obs: obs.trim(),
+      fotos,
       notas: {
         p1: foi1 && Object.values(n1).some(v => v > 0) ? limpa(n1) : null,
         p2: foi2 && Object.values(n2).some(v => v > 0) ? limpa(n2) : null,
@@ -213,6 +220,42 @@ export function VisitFormPage({ nav, params, settings }) {
           <textarea className="input" placeholder="O que marcou essa visita? Prato favorito, momento, veredito…"
             value={obs} onChange={e => setObs(e.target.value)} />
         </div>
+      </div>
+
+      {/* ── álbum do momento ── */}
+      <div className="card mt12">
+        <div className="card-label">📸 Álbum do momento {fotos.length > 0 && `· ${fotos.length}/${MAX_FOTOS}`}</div>
+        <div className="foto-strip">
+          {fotos.map((f, i) => (
+            <div key={i} className="foto-mini">
+              <img src={f} alt="" />
+              <button className="rm" onClick={() => setFotos(fotos.filter((_, j) => j !== i))}>
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+          {fotos.length < MAX_FOTOS && (
+            <button className="foto-add" onClick={() => fotoRef.current?.click()}>
+              <Camera size={22} />
+            </button>
+          )}
+        </div>
+        {fotos.length === 0 && (
+          <div className="muted mt8" style={{ fontSize: 12.5 }}>
+            Registrem o momento: vocês, o lugar, a mesa, o brinde 🥂
+          </div>
+        )}
+        <input ref={fotoRef} type="file" accept="image/*" multiple hidden
+          onChange={async e => {
+            const arquivos = [...(e.target.files || [])].slice(0, MAX_FOTOS - fotos.length)
+            e.target.value = ''
+            const novas = []
+            for (const f of arquivos) {
+              try { novas.push(await comprimirImagem(f)) }
+              catch { showToast('Uma das imagens não pôde ser lida') }
+            }
+            if (novas.length) setFotos([...fotos, ...novas])
+          }} />
       </div>
 
       <button className="btn primary mt16" disabled={!podeSalvar} onClick={salvar}>

@@ -121,6 +121,34 @@ function normaliza(places, centro, key) {
     .sort((a, b) => (b.nota ?? 0) - (a.nota ?? 0) || b.avaliacoes - a.avaliacoes)
 }
 
+// Avaliações do Google de um lugar (até 5, as mais relevantes) — chamada só ao
+// abrir o detalhe (campo 'reviews' é do tier mais caro; cache evita repagar).
+const cacheReviews = new Map()
+
+export async function reviewsDoLugar(key, googleId) {
+  if (cacheReviews.has(googleId)) return cacheReviews.get(googleId)
+  let res
+  try {
+    res = await fetch(`https://places.googleapis.com/v1/places/${googleId}?languageCode=pt-BR&regionCode=BR`, {
+      headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'reviews' },
+    })
+  } catch {
+    throw new Error('Sem conexão com a internet')
+  }
+  if (!res.ok) throw new Error('Não deu para carregar as avaliações agora')
+  const data = await res.json()
+  const rows = (data.reviews || []).map(rv => ({
+    nota: rv.rating ?? null,
+    texto: rv.text?.text || rv.originalText?.text || '',
+    autor: rv.authorAttribution?.displayName || 'Anônimo',
+    autorFoto: rv.authorAttribution?.photoUri || null,
+    autorUri: rv.authorAttribution?.uri || null,
+    quando: rv.relativePublishTimeDescription || '',
+  }))
+  cacheReviews.set(googleId, rows)
+  return rows
+}
+
 // Busca por raio a partir de uma coordenada (GPS)
 export async function buscarPorRaio(key, { latitude, longitude }, raioMetros, tipoId) {
   const includedTypes = tipoId ? TIPO_PARA_GOOGLE[tipoId] || ['restaurant'] : ['restaurant']

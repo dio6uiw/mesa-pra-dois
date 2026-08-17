@@ -109,6 +109,24 @@ export function SettingsPage({ settings, reloadSettings }) {
       </div>
 
       <div className="card mt12">
+        <div className="card-label">Aparência</div>
+        <div className="seg" style={{ marginBottom: 0 }}>
+          {[['claro', '☀️ Claro'], ['escuro', '🌙 Escuro'], ['auto', 'Automático']].map(([id, label]) => (
+            <button key={id} className={(settings.tema || 'claro') === id ? 'on' : ''}
+              onClick={async () => {
+                await saveSettings({ ...settings, tema: id })
+                await reloadSettings()
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="muted mt8" style={{ fontSize: 12.5 }}>
+          No automático, o app segue o tema do celular — escuro à noite, claro de dia.
+        </div>
+      </div>
+
+      <div className="card mt12">
         <div className="card-label">Descobrir · chave Google Places</div>
         <input className="input" placeholder="Usando a chave padrão do app" value={placesKey}
           onChange={e => setPlacesKey(e.target.value)} />

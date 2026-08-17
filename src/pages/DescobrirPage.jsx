@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Geolocation } from '@capacitor/geolocation'
 import { ArrowLeft, Check, Compass, ExternalLink, LoaderCircle, MapPin, Plus, Search, Star, X } from 'lucide-react'
 import { db, saveSettings } from '../db'
-import { buscarPorCidade, buscarPorRaio, chaveEfetiva } from '../places'
+import { buscarPorCidade, buscarPorRaio, chaveEfetiva, reviewsDoLugar } from '../places'
 import { tierPorId } from '../logic'
 import { FotoThumb, TierTag } from '../components/Badges'
+import { Stars } from '../components/StarInput'
 import { EmptyState } from '../components/EmptyState'
 import { useFeedback } from '../components/Feedback'
 
@@ -45,9 +46,20 @@ function SetupChave({ settings, reloadSettings, showToast }) {
   )
 }
 
-function DetalheSheet({ r, tipos, jaExiste, onAdd, onClose }) {
+function DetalheSheet({ r, tipos, chave, jaExiste, onAdd, onClose }) {
   const [idx, setIdx] = useState(0)
+  const [reviews, setReviews] = useState(null) // null = carregando
+  const [revErro, setRevErro] = useState(null)
+  const [expandida, setExpandida] = useState(null)
   const emoji = tipos.find(t => t.id === r.tipo)?.emoji
+
+  useEffect(() => {
+    let vivo = true
+    reviewsDoLugar(chave, r.googleId)
+      .then(rows => { if (vivo) setReviews(rows) })
+      .catch(e => { if (vivo) { setRevErro(e.message); setReviews([]) } })
+    return () => { vivo = false }
+  }, [chave, r.googleId])
 
   return (
     <div className="sheet-back" onClick={onClose}>
@@ -125,6 +137,42 @@ function DetalheSheet({ r, tipos, jaExiste, onAdd, onClose }) {
             </a>
           )}
         </div>
+
+        <div className="card-label" style={{ marginTop: 20 }}>Avaliações do Google</div>
+        {reviews === null && (
+          <div className="row muted" style={{ gap: 8, fontSize: 13, padding: '6px 0' }}>
+            <LoaderCircle size={15} className="gira" /> carregando avaliações…
+          </div>
+        )}
+        {revErro && <div className="muted" style={{ fontSize: 13 }}>{revErro}</div>}
+        {reviews?.length === 0 && !revErro && (
+          <div className="muted" style={{ fontSize: 13 }}>Sem avaliações públicas por aqui.</div>
+        )}
+        {reviews?.map((rv, i) => (
+          <div key={i} className="review">
+            <div className="row" style={{ gap: 9 }}>
+              {rv.autorFoto ? (
+                <img className="review-avatar" src={rv.autorFoto} alt="" referrerPolicy="no-referrer"
+                  onError={e => { e.currentTarget.style.display = 'none' }} />
+              ) : (
+                <div className="review-avatar fallback">{rv.autor[0]?.toUpperCase()}</div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="review-autor">{rv.autor}</div>
+                <div className="row" style={{ gap: 6 }}>
+                  <Stars value={rv.nota} size={11} />
+                  <span className="muted" style={{ fontSize: 11.5 }}>{rv.quando}</span>
+                </div>
+              </div>
+            </div>
+            {rv.texto && (
+              <div className={`review-txt${expandida === i ? '' : ' clamp'}`}
+                onClick={() => setExpandida(expandida === i ? null : i)}>
+                {rv.texto}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -315,7 +363,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
           )}
 
           {detalhe && (
-            <DetalheSheet r={detalhe} tipos={settings.tipos}
+            <DetalheSheet r={detalhe} tipos={settings.tipos} chave={chave}
               jaExiste={jaTenho.has(detalhe.nome.trim().toLowerCase())}
               onAdd={async r => { await adicionar(r); setDetalhe(null) }}
               onClose={() => setDetalhe(null)} />

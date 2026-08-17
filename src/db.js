@@ -31,6 +31,7 @@ export const SETTINGS_DEFAULT = {
   tiers: { pedirMax: 50, legalMax: 130 },
   tipos: TIPOS_DEFAULT,
   placesKey: '',
+  tema: 'claro', // claro | escuro | auto
 }
 
 export async function getSettings() {

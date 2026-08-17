@@ -11,8 +11,8 @@ import {
 import { ScoreBadge } from '../components/Badges'
 import { EmptyState } from '../components/EmptyState'
 
-const SERIE_1 = '#2a78d6'
-const SERIE_2 = '#eb6834'
+const SERIE_1 = 'var(--serie-1)'
+const SERIE_2 = 'var(--serie-2)'
 
 function TooltipCasal({ active, payload, label, nomes }) {
   if (!active || !payload?.length) return null
@@ -106,7 +106,7 @@ export function DashboardPage({ nav, settings }) {
 
       {/* match do casal */}
       {match && (
-        <div className="card mt12" style={{ background: 'linear-gradient(135deg, var(--surface) 0%, #e9f1fc 100%)' }}>
+        <div className="card mt12" style={{ background: 'linear-gradient(135deg, var(--surface) 0%, var(--card-glow) 100%)' }}>
           <div className="card-label">❤️ Sintonia do casal</div>
           <div className="row" style={{ gap: 14 }}>
             <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--accent-strong)' }}>

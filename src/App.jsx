@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
+import { StatusBar, Style } from '@capacitor/status-bar'
 import { BarChart3, Plus, Settings as SettingsIcon, Sparkles, UtensilsCrossed } from 'lucide-react'
 import { getSettings } from './db'
 import { FeedbackProvider } from './components/Feedback'
@@ -43,6 +44,27 @@ export default function App() {
 
   const reloadSettings = useCallback(async () => setSettings(await getSettings()), [])
   useEffect(() => { reloadSettings() }, [reloadSettings])
+
+  // Aplica o tema (claro | escuro | auto) no documento, status bar e meta theme-color
+  useEffect(() => {
+    const tema = settings?.tema || 'claro'
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const aplicar = () => {
+      const escuro = tema === 'escuro' || (tema === 'auto' && mq.matches)
+      document.documentElement.dataset.theme = escuro ? 'dark' : 'light'
+      document.querySelector('meta[name="theme-color"]')
+        ?.setAttribute('content', escuro ? '#0e1420' : '#f4f7fb')
+      if (Capacitor.isNativePlatform()) {
+        StatusBar.setBackgroundColor({ color: escuro ? '#0e1420' : '#f4f7fb' }).catch(() => {})
+        StatusBar.setStyle({ style: escuro ? Style.Dark : Style.Light }).catch(() => {})
+      }
+    }
+    aplicar()
+    if (tema === 'auto') {
+      mq.addEventListener('change', aplicar)
+      return () => mq.removeEventListener('change', aplicar)
+    }
+  }, [settings?.tema])
 
   const nav = useMemo(() => ({
     push: (page, params = {}) => setStack(s => [...s, { page, params, key: s.at(-1).key + 1 }]),
