@@ -8,3 +8,5 @@ android/app/release/
 *.log
 .DS_Store
 *.apk
+.env
+.env.local

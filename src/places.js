@@ -1,5 +1,10 @@
 // Cliente da Google Places API (New) — busca de restaurantes reais.
-// A chave fica em settings.placesKey, salva SÓ no aparelho (nunca vai pro site).
+// Chave: settings.placesKey (por aparelho) sobrescreve a padrão do build (.env.local).
+export const PLACES_KEY_PADRAO = import.meta.env.VITE_PLACES_KEY || ''
+
+export function chaveEfetiva(settings) {
+  return settings?.placesKey?.trim() || PLACES_KEY_PADRAO
+}
 
 const FIELDS = [
   'places.id', 'places.displayName', 'places.rating', 'places.userRatingCount',

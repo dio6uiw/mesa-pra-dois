@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Geolocation } from '@capacitor/geolocation'
 import { ArrowLeft, Check, Compass, ExternalLink, LoaderCircle, MapPin, Plus, Search, Star } from 'lucide-react'
 import { db, saveSettings } from '../db'
-import { buscarPorCidade, buscarPorRaio } from '../places'
+import { buscarPorCidade, buscarPorRaio, chaveEfetiva } from '../places'
 import { tierPorId } from '../logic'
 import { TierTag } from '../components/Badges'
 import { EmptyState } from '../components/EmptyState'
@@ -63,7 +63,8 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
     [places]
   )
 
-  const temChave = !!settings.placesKey
+  const chave = chaveEfetiva(settings)
+  const temChave = !!chave
 
   async function buscar() {
     setErro(null)
@@ -78,11 +79,11 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
         } catch {
           throw new Error('Não consegui pegar a localização — confere a permissão de localização do app')
         }
-        rows = await buscarPorRaio(settings.placesKey, pos.coords, raio * 1000, tipoSel)
+        rows = await buscarPorRaio(chave, pos.coords, raio * 1000, tipoSel)
       } else {
         if (!cidade.trim()) throw new Error('Digite a cidade')
         const tipoLabel = tipoSel ? settings.tipos.find(t => t.id === tipoSel)?.label : null
-        rows = await buscarPorCidade(settings.placesKey, cidade.trim(), tipoLabel)
+        rows = await buscarPorCidade(chave, cidade.trim(), tipoLabel)
       }
       setResultados(rows)
     } catch (e) {

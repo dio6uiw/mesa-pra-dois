@@ -110,10 +110,10 @@ export function SettingsPage({ settings, reloadSettings }) {
 
       <div className="card mt12">
         <div className="card-label">Descobrir · chave Google Places</div>
-        <input className="input" placeholder="AIza… (opcional)" value={placesKey}
+        <input className="input" placeholder="Usando a chave padrão do app" value={placesKey}
           onChange={e => setPlacesKey(e.target.value)} />
         <div className="muted mt8" style={{ fontSize: 12.5 }}>
-          Necessária só para o módulo Descobrir. Fica salva neste aparelho (e no arquivo de backup).
+          O app já vem com uma chave padrão — preencha só se quiser usar outra neste aparelho.
         </div>
       </div>
 
