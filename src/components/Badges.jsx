@@ -36,3 +36,8 @@ export function TipoBadge({ tipoId, tipos }) {
   if (!t) return null
   return <span className="badge">{t.emoji} {t.label}</span>
 }
+
+export function TierTag({ tier }) {
+  if (!tier) return null
+  return <span className="badge">{tier.emoji} {tier.label}</span>
+}

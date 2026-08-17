@@ -357,6 +357,39 @@ textarea.input { resize: none; min-height: 84px; line-height: 1.5; }
 .toggle.on { background: var(--accent); border-color: var(--accent); }
 .toggle.on::after { left: 22px; background: #fff; }
 
+/* ── roleta do sorteio ─────────────────────────────────────────────────── */
+.roleta {
+  position: relative; overflow: hidden;
+  margin-top: 12px; padding: 30px 18px;
+  background: var(--surface); border: 2px dashed var(--border-2);
+  border-radius: var(--r-lg); text-align: center;
+  transition: border 0.2s, box-shadow 0.3s;
+  min-height: 172px;
+}
+.roleta.girando { border-color: var(--accent); border-style: solid; }
+.roleta.escolhido {
+  border-color: var(--accent); border-style: solid;
+  box-shadow: 0 10px 34px rgba(42, 120, 214, 0.22);
+  animation: roleta-pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+@keyframes roleta-pop { 0% { transform: scale(0.96); } 55% { transform: scale(1.02); } }
+.roleta-emoji { font-size: 40px; }
+.roleta-nome { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; margin-top: 6px; }
+.roleta-veredito { margin-top: 12px; font-size: 13.5px; font-weight: 700; color: var(--accent-strong); }
+
+.confete { position: absolute; inset: 0; pointer-events: none; }
+.confete span {
+  position: absolute; top: -12px;
+  width: 8px; height: 13px; border-radius: 2px; opacity: 0.9;
+  animation: confete-cai linear forwards;
+}
+@keyframes confete-cai {
+  to { transform: translateY(230px) rotate(540deg); opacity: 0; }
+}
+
+.gira { animation: gira-spin 0.9s linear infinite; }
+@keyframes gira-spin { to { transform: rotate(360deg); } }
+
 /* util */
 .row { display: flex; align-items: center; gap: 10px; }
 .spread { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

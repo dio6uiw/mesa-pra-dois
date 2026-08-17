@@ -1,7 +1,7 @@
 {
   "name": "mesa-pra-dois",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Mesa pra Dois · diário de restaurantes do casal (Android)",
   "type": "module",
   "scripts": {
@@ -15,6 +15,7 @@
   "dependencies": {
     "@capacitor/app": "^8.1.0",
     "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/geolocation": "^8.2.2",
     "@capacitor/share": "^8.0.1",
     "@capacitor/status-bar": "^8.0.0",
     "dexie": "^4.0.11",

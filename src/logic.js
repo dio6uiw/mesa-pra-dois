@@ -59,6 +59,16 @@ export function tierDe(precoMedio, tiersCfg) {
   return TIERS[2]
 }
 
+export function tierPorId(id) {
+  return TIERS.find(t => t.id === id) || null
+}
+
+// Tier efetivo de um lugar: real (média das visitas) ou o previsto no cadastro.
+export function tierDoLugar(place, visits, tiersCfg) {
+  const agg = aggPlace(place, visits)
+  return tierDe(agg.precoMedio, tiersCfg) || tierPorId(place.tierPrevisto)
+}
+
 export function scoreColor(nota) {
   if (nota == null) return 'var(--muted)'
   if (nota < 2) return 'var(--score-1)'

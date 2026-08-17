@@ -12,6 +12,7 @@ export function SettingsPage({ settings, reloadSettings }) {
   const [pedirMax, setPedirMax] = useState(String(settings.tiers.pedirMax))
   const [legalMax, setLegalMax] = useState(String(settings.tiers.legalMax))
   const [novoTipo, setNovoTipo] = useState('')
+  const [placesKey, setPlacesKey] = useState(settings.placesKey || '')
 
   async function salvarPerfil() {
     const t1 = parseDecimal(pedirMax) ?? 50
@@ -20,6 +21,7 @@ export function SettingsPage({ settings, reloadSettings }) {
       ...settings,
       nomes: { p1: nomes.p1.trim() || 'Eu', p2: nomes.p2.trim() || 'Par' },
       tiers: { pedirMax: t1, legalMax: Math.max(t2, t1 + 1) },
+      placesKey: placesKey.trim(),
     })
     await reloadSettings()
     showToast('Ajustes salvos!')
@@ -104,6 +106,15 @@ export function SettingsPage({ settings, reloadSettings }) {
           </div>
         </div>
         <div className="muted mt8" style={{ fontSize: 12.5 }}>Acima disso, ✨ lugar chique. O tier de cada lugar sai da média de preço das visitas.</div>
+      </div>
+
+      <div className="card mt12">
+        <div className="card-label">Descobrir · chave Google Places</div>
+        <input className="input" placeholder="AIza… (opcional)" value={placesKey}
+          onChange={e => setPlacesKey(e.target.value)} />
+        <div className="muted mt8" style={{ fontSize: 12.5 }}>
+          Necessária só para o módulo Descobrir. Fica salva neste aparelho (e no arquivo de backup).
+        </div>
       </div>
 
       <button className="btn primary mt12" onClick={salvarPerfil}>Salvar ajustes</button>

@@ -12,6 +12,8 @@ import { PlaceFormPage } from './pages/PlaceFormPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { OnboardingPage } from './pages/OnboardingPage'
+import { SortearPage } from './pages/SortearPage'
+import { DescobrirPage } from './pages/DescobrirPage'
 
 const TABS = [
   { id: 'places', label: 'Lugares', Icon: UtensilsCrossed },
@@ -29,6 +31,8 @@ const PAGES = {
   'place-detail': PlaceDetailPage,
   'visit-form': VisitFormPage,
   'place-form': PlaceFormPage,
+  sortear: SortearPage,
+  descobrir: DescobrirPage,
 }
 
 const RAIZES = ['places', 'wishlist', 'dashboard', 'settings']

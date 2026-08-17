@@ -30,6 +30,7 @@ export const SETTINGS_DEFAULT = {
   nomes: { p1: '', p2: '' },
   tiers: { pedirMax: 50, legalMax: 130 },
   tipos: TIPOS_DEFAULT,
+  placesKey: '',
 }
 
 export async function getSettings() {
