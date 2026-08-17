@@ -24,7 +24,7 @@ function CardAvaliador({ nome, notas, setNotas, foi, setFoi }) {
       {foi && PILARES.map(p => (
         <div key={p.id} className="star-row">
           <div className="pilar-label">{p.label}</div>
-          <StarInput value={notas[p.id]} onChange={v => setNotas({ ...notas, [p.id]: v })} size={34} />
+          <StarInput value={notas[p.id]} onChange={v => setNotas({ ...notas, [p.id]: v })} size={36} />
           <div className="valor">{notas[p.id] ? notas[p.id].toLocaleString('pt-BR') : '–'}</div>
         </div>
       ))}
@@ -138,9 +138,9 @@ export function VisitFormPage({ nav, params, settings }) {
   return (
     <div className="page no-tabbar">
       <div className="stack-header">
-        <button className="icon-btn" onClick={nav.pop}><ArrowLeft size={20} /></button>
+        <button className="icon-btn" aria-label="Voltar" onClick={nav.pop}><ArrowLeft size={20} /></button>
         <div className="title">{editando ? 'Editar visita' : 'Nova visita'}</div>
-        {editando && <button className="icon-btn danger" onClick={excluir}><Trash2 size={17} /></button>}
+        {editando && <button className="icon-btn danger" aria-label="Excluir visita" onClick={excluir}><Trash2 size={17} /></button>}
       </div>
 
       {/* ── lugar ── */}
@@ -160,7 +160,9 @@ export function VisitFormPage({ nav, params, settings }) {
           <>
             <div className="search" style={{ marginBottom: 8 }}>
               <Search size={16} />
-              <input placeholder="Nome do restaurante…" value={buscaLugar}
+              <input
+                placeholder={places.length ? 'Nome do restaurante…' : 'Digite o nome para criar o primeiro lugar…'}
+                value={buscaLugar}
                 onChange={e => { setBuscaLugar(e.target.value); setCriandoNovo(false) }} autoFocus />
             </div>
             {!criandoNovo && sugestoes.map(p => (

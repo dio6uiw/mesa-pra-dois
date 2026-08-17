@@ -98,7 +98,7 @@ export function SortearPage({ nav, settings }) {
   return (
     <div className="page no-tabbar">
       <div className="stack-header">
-        <button className="icon-btn" onClick={nav.pop}><ArrowLeft size={20} /></button>
+        <button className="icon-btn" aria-label="Voltar" onClick={nav.pop}><ArrowLeft size={20} /></button>
         <div className="title">Deixa a sorte escolher 🎲</div>
       </div>
 

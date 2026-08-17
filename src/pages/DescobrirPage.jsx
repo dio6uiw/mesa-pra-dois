@@ -66,7 +66,7 @@ function DetalheSheet({ r, tipos, chave, jaExiste, onAdd, onClose }) {
       <div className="sheet sheet-detalhe" onClick={e => e.stopPropagation()}>
         <div className="spread" style={{ marginBottom: 10 }}>
           <div className="t" style={{ margin: 0 }}>{r.nome}</div>
-          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+          <button className="icon-btn" aria-label="Fechar" onClick={onClose}><X size={18} /></button>
         </div>
 
         {r.fotos.length > 0 ? (
@@ -240,7 +240,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
   return (
     <div className="page no-tabbar">
       <div className="stack-header">
-        <button className="icon-btn" onClick={nav.pop}><ArrowLeft size={20} /></button>
+        <button className="icon-btn" aria-label="Voltar" onClick={nav.pop}><ArrowLeft size={20} /></button>
         <div className="title">Descobrir por aí 🔎</div>
       </div>
 
@@ -272,12 +272,14 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
             ) : (
               <div className="search" style={{ marginBottom: 0 }}>
                 <Search size={16} />
-                <input placeholder="Ex.: Mococa, SP" value={cidade} onChange={e => setCidade(e.target.value)} />
+                <input placeholder="Ex.: Mococa, SP" value={cidade}
+                  onChange={e => setCidade(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur(); buscar() } }} />
               </div>
             )}
 
             <div className="card-label" style={{ marginTop: 14 }}>Tipo (opcional)</div>
-            <div className="chip-row scroll">
+            <div className="chip-row scroll" style={{ margin: '0 -14px', padding: '0 14px 4px' }}>
               {settings.tipos.filter(t => t.id !== 'outro').map(t => (
                 <button key={t.id} className={`chip${tipoSel === t.id ? ' on' : ''}`}
                   onClick={() => setTipoSel(tipoSel === t.id ? null : t.id)}>

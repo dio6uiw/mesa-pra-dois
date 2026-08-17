@@ -7,7 +7,7 @@ export function FotoViewer({ fotos, inicial = 0, onClose }) {
 
   return (
     <div className="foto-viewer" onClick={onClose}>
-      <button className="foto-viewer-x" onClick={onClose}><X size={22} /></button>
+      <button className="foto-viewer-x" aria-label="Fechar" onClick={onClose}><X size={22} /></button>
       <div className="foto-viewer-trilho" onClick={e => e.stopPropagation()}
         ref={el => { if (el && !el.dataset.pos) { el.dataset.pos = '1'; el.scrollLeft = inicial * el.clientWidth } }}
         onScroll={e => setIdx(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>

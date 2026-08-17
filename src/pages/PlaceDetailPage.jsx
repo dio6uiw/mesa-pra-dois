@@ -45,10 +45,10 @@ export function PlaceDetailPage({ nav, params, settings }) {
   return (
     <div className="page no-tabbar">
       <div className="stack-header">
-        <button className="icon-btn" onClick={nav.pop}><ArrowLeft size={20} /></button>
+        <button className="icon-btn" aria-label="Voltar" onClick={nav.pop}><ArrowLeft size={20} /></button>
         <div className="title">{place.nome}</div>
-        <button className="icon-btn" onClick={() => nav.push('place-form', { placeId: place.id })}><Pencil size={17} /></button>
-        <button className="icon-btn danger" onClick={excluirLugar}><Trash2 size={17} /></button>
+        <button className="icon-btn" aria-label="Editar lugar" onClick={() => nav.push('place-form', { placeId: place.id })}><Pencil size={17} /></button>
+        <button className="icon-btn danger" aria-label="Excluir lugar" onClick={excluirLugar}><Trash2 size={17} /></button>
       </div>
 
       <div className="card">
@@ -108,6 +108,7 @@ export function PlaceDetailPage({ nav, params, settings }) {
             onClick={() => nav.push('visit-form', { visitId: v.id })}>
             <div className="topo">
               <span className="data">{fmtData(v.data)}</span>
+              <Pencil size={11} style={{ color: 'var(--muted)', flex: '0 0 auto' }} />
               <Stars value={notaVisita(v)} size={13} />
               <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--star-ink)' }}>{fmtNota(notaVisita(v))}</span>
               <span style={{ flex: 1 }} />

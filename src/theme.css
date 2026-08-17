@@ -1,5 +1,6 @@
 /* ── Mesa pra Dois · design system ─────────────────────────────────────── */
 :root {
+  color-scheme: light;
   --bg: #f4f7fb;
   --surface: #ffffff;
   --surface-2: #f1f4f9;
@@ -9,7 +10,7 @@
 
   --text: #17222f;
   --text-2: #45566b;
-  --muted: #7e8da1;
+  --muted: #6d7d93;
 
   --accent: #2a78d6;          /* azul */
   --accent-strong: #1c5cab;
@@ -54,6 +55,7 @@
 
 /* ── modo escuro (azul-noite) ──────────────────────────────────────────── */
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --bg: #0e1420;
   --surface: #171f2e;
   --surface-2: #20293b;
@@ -131,7 +133,10 @@ button { font-family: inherit; border: 0; background: none; color: inherit; curs
   display: flex; align-items: center; gap: 10px;
   padding: 4px 0 12px;
 }
-.stack-header .title { font-size: 19px; font-weight: 750; letter-spacing: -0.01em; flex: 1; }
+.stack-header .title {
+  font-size: 19px; font-weight: 750; letter-spacing: -0.01em; flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
 .icon-btn {
   width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto;
   display: grid; place-items: center;

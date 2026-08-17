@@ -62,8 +62,8 @@ export function DashboardPage({ nav, settings }) {
   if (!todasVisitas.length) {
     return (
       <div className="page">
-        <div className="page-title">Indicadores 📊</div>
-        <EmptyState emoji="📈" titulo="Ainda sem números"
+        <div className="page-title">Números 📊</div>
+        <EmptyState emoji="📊" titulo="Ainda sem números"
           texto="Depois das primeiras visitas, aqui aparecem as médias, os rankings e o quanto vocês dois concordam." />
       </div>
     )
@@ -74,7 +74,7 @@ export function DashboardPage({ nav, settings }) {
 
   return (
     <div className="page">
-      <div className="page-title">Indicadores 📊</div>
+      <div className="page-title">Números 📊</div>
       <div className="page-sub">A vida gastronômica de {nomes.p1} & {nomes.p2} em números</div>
 
       <div className="seg">

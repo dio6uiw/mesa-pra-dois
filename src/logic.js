@@ -87,7 +87,12 @@ export function fmtNota(n) {
 
 export function fmtMoeda(v) {
   if (v == null) return '–'
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+  const inteiro = Math.abs(v % 1) < 0.005
+  return v.toLocaleString('pt-BR', {
+    style: 'currency', currency: 'BRL',
+    minimumFractionDigits: inteiro ? 0 : 2,
+    maximumFractionDigits: inteiro ? 0 : 2,
+  })
 }
 
 export function fmtData(iso) {
