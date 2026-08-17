@@ -5,7 +5,7 @@ import { ArrowLeft, Check, Compass, ExternalLink, LoaderCircle, MapPin, Plus, Se
 import { db, saveSettings } from '../db'
 import { buscarPorCidade, buscarPorRaio, chaveEfetiva } from '../places'
 import { tierPorId } from '../logic'
-import { TierTag } from '../components/Badges'
+import { FotoThumb, TierTag } from '../components/Badges'
 import { EmptyState } from '../components/EmptyState'
 import { useFeedback } from '../components/Feedback'
 
@@ -96,7 +96,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
   async function adicionar(r) {
     await db.places.add({
       nome: r.nome, tipo: r.tipo, tierPrevisto: r.tierPrevisto,
-      endereco: r.endereco, wishlist: 1, criadoEm: new Date().toISOString(),
+      endereco: r.endereco, fotoUrl: r.fotoUrl, wishlist: 1, criadoEm: new Date().toISOString(),
     })
     showToast(`${r.nome} entrou no Queremos ir!`)
   }
@@ -178,6 +178,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
             const existe = jaTenho.has(r.nome.trim().toLowerCase())
             return (
               <div key={r.googleId} className="place-card">
+                <FotoThumb src={r.fotoUrl} emoji={settings.tipos.find(t => t.id === r.tipo)?.emoji} size={72} />
                 <div className="info" style={{ flex: 1 }}>
                   <div className="nome">{r.nome}</div>
                   <div className="row" style={{ gap: 8, marginTop: 5, flexWrap: 'wrap' }}>

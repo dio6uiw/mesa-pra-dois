@@ -41,3 +41,16 @@ export function TierTag({ tier }) {
   if (!tier) return null
   return <span className="badge">{tier.emoji} {tier.label}</span>
 }
+
+// Foto do estabelecimento com fallback para o emoji do tipo.
+export function FotoThumb({ src, emoji, size = 64 }) {
+  return (
+    <div className="thumb" style={{ width: size, height: size, fontSize: size * 0.44 }}>
+      <span>{emoji || '🍽️'}</span>
+      {src && (
+        <img src={src} alt="" loading="lazy"
+          onError={e => { e.currentTarget.style.display = 'none' }} />
+      )}
+    </div>
+  )
+}

@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Compass, Dices, Plus, UtensilsCrossed } from 'lucide-react'
 import { db } from '../db'
 import { tierPorId } from '../logic'
-import { TierTag, TipoBadge } from '../components/Badges'
+import { FotoThumb, TierTag, TipoBadge } from '../components/Badges'
 import { EmptyState } from '../components/EmptyState'
 
 export function WishlistPage({ nav, settings }) {
@@ -32,6 +32,10 @@ export function WishlistPage({ nav, settings }) {
 
       {places.map(place => (
         <div key={place.id} className="place-card">
+          {place.fotoUrl && (
+            <FotoThumb src={place.fotoUrl}
+              emoji={settings.tipos.find(t => t.id === place.tipo)?.emoji} size={56} />
+          )}
           <button style={{ flex: 1, textAlign: 'left', minWidth: 0 }}
             onClick={() => nav.push('place-form', { placeId: place.id })}>
             <div className="nome">{place.nome}</div>

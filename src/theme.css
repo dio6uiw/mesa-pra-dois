@@ -357,6 +357,18 @@ textarea.input { resize: none; min-height: 84px; line-height: 1.5; }
 .toggle.on { background: var(--accent); border-color: var(--accent); }
 .toggle.on::after { left: 22px; background: #fff; }
 
+/* ── foto de estabelecimento ───────────────────────────────────────────── */
+.thumb {
+  position: relative; flex: 0 0 auto; overflow: hidden;
+  border-radius: 14px; background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: grid; place-items: center;
+}
+.thumb img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover;
+}
+
 /* ── roleta do sorteio ─────────────────────────────────────────────────── */
 .roleta {
   position: relative; overflow: hidden;

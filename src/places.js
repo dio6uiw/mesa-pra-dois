@@ -10,6 +10,7 @@ const FIELDS = [
   'places.id', 'places.displayName', 'places.rating', 'places.userRatingCount',
   'places.priceLevel', 'places.currentOpeningHours.openNow', 'places.primaryType',
   'places.primaryTypeDisplayName', 'places.location', 'places.shortFormattedAddress',
+  'places.photos',
 ].join(',')
 
 // meu tipo → tipos do Google (p/ filtro); o primeiro é o principal
@@ -87,7 +88,12 @@ async function chamar(key, endpoint, body) {
   return data.places || []
 }
 
-function normaliza(places, centro) {
+function fotoUrl(photo, key) {
+  if (!photo?.name) return null
+  return `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=400&key=${key}`
+}
+
+function normaliza(places, centro, key) {
   return places
     .filter(p => p.displayName?.text)
     .map(p => {
@@ -104,6 +110,7 @@ function normaliza(places, centro) {
         cifra: preco.cifra,
         endereco: p.shortFormattedAddress || null,
         distanciaKm: centro && p.location ? distanciaKm(centro, p.location) : null,
+        fotoUrl: fotoUrl(p.photos?.[0], key),
       }
     })
     .sort((a, b) => (b.nota ?? 0) - (a.nota ?? 0) || b.avaliacoes - a.avaliacoes)
@@ -120,7 +127,7 @@ export async function buscarPorRaio(key, { latitude, longitude }, raioMetros, ti
     regionCode: 'BR',
     locationRestriction: { circle: { center: { latitude, longitude }, radius: raioMetros } },
   })
-  return normaliza(places, { latitude, longitude })
+  return normaliza(places, { latitude, longitude }, key)
 }
 
 // Busca por texto ("pizzarias em Mococa")
@@ -131,5 +138,5 @@ export async function buscarPorCidade(key, cidade, tipoLabel) {
     languageCode: 'pt-BR',
     regionCode: 'BR',
   })
-  return normaliza(places, null)
+  return normaliza(places, null, key)
 }
