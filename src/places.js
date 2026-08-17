@@ -10,7 +10,7 @@ const FIELDS = [
   'places.id', 'places.displayName', 'places.rating', 'places.userRatingCount',
   'places.priceLevel', 'places.currentOpeningHours.openNow', 'places.primaryType',
   'places.primaryTypeDisplayName', 'places.location', 'places.shortFormattedAddress',
-  'places.photos',
+  'places.photos', 'places.googleMapsUri',
 ].join(',')
 
 // meu tipo → tipos do Google (p/ filtro); o primeiro é o principal
@@ -88,9 +88,9 @@ async function chamar(key, endpoint, body) {
   return data.places || []
 }
 
-function fotoUrl(photo, key) {
+function fotoUrl(photo, key, largura = 400) {
   if (!photo?.name) return null
-  return `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=400&key=${key}`
+  return `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=${largura}&key=${key}`
 }
 
 function normaliza(places, centro, key) {
@@ -111,6 +111,11 @@ function normaliza(places, centro, key) {
         endereco: p.shortFormattedAddress || null,
         distanciaKm: centro && p.location ? distanciaKm(centro, p.location) : null,
         fotoUrl: fotoUrl(p.photos?.[0], key),
+        fotos: (p.photos || []).slice(0, 10).map(ph => ({
+          url: fotoUrl(ph, key, 800),
+          autor: ph.authorAttributions?.[0]?.displayName || null,
+        })),
+        mapsUrl: p.googleMapsUri || null,
       }
     })
     .sort((a, b) => (b.nota ?? 0) - (a.nota ?? 0) || b.avaliacoes - a.avaliacoes)

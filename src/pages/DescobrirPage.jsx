@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Geolocation } from '@capacitor/geolocation'
-import { ArrowLeft, Check, Compass, ExternalLink, LoaderCircle, MapPin, Plus, Search, Star } from 'lucide-react'
+import { ArrowLeft, Check, Compass, ExternalLink, LoaderCircle, MapPin, Plus, Search, Star, X } from 'lucide-react'
 import { db, saveSettings } from '../db'
 import { buscarPorCidade, buscarPorRaio, chaveEfetiva } from '../places'
 import { tierPorId } from '../logic'
@@ -45,6 +45,91 @@ function SetupChave({ settings, reloadSettings, showToast }) {
   )
 }
 
+function DetalheSheet({ r, tipos, jaExiste, onAdd, onClose }) {
+  const [idx, setIdx] = useState(0)
+  const emoji = tipos.find(t => t.id === r.tipo)?.emoji
+
+  return (
+    <div className="sheet-back" onClick={onClose}>
+      <div className="sheet sheet-detalhe" onClick={e => e.stopPropagation()}>
+        <div className="spread" style={{ marginBottom: 10 }}>
+          <div className="t" style={{ margin: 0 }}>{r.nome}</div>
+          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        {r.fotos.length > 0 ? (
+          <>
+            <div className="galeria"
+              onScroll={e => setIdx(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
+              {r.fotos.map((f, i) => (
+                <img key={i} src={f.url} alt="" loading="lazy"
+                  onError={e => { e.currentTarget.style.visibility = 'hidden' }} />
+              ))}
+            </div>
+            {r.fotos.length > 1 && (
+              <div className="galeria-dots">
+                {r.fotos.map((_, i) => <span key={i} className={i === idx ? 'on' : ''} />)}
+              </div>
+            )}
+            {r.fotos[idx]?.autor && <div className="galeria-autor">📷 {r.fotos[idx].autor}</div>}
+          </>
+        ) : (
+          <div className="thumb" style={{ width: '100%', height: 140, fontSize: 52, marginBottom: 10 }}>
+            <span>{emoji || '🍽️'}</span>
+          </div>
+        )}
+
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+          {r.nota != null && (
+            <span className="row" style={{ gap: 4, fontSize: 15, fontWeight: 800, color: 'var(--star-ink)' }}>
+              <Star size={15} fill="var(--star)" stroke="var(--star)" />
+              {r.nota.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+              <span className="muted" style={{ fontWeight: 600, fontSize: 12.5 }}>
+                ({r.avaliacoes.toLocaleString('pt-BR')} avaliações)
+              </span>
+            </span>
+          )}
+          {r.abertoAgora != null && (
+            <span className="badge" style={r.abertoAgora
+              ? { color: 'var(--good)', borderColor: 'var(--good)' } : { color: 'var(--muted)' }}>
+              {r.abertoAgora ? '● Aberto agora' : '○ Fechado agora'}
+            </span>
+          )}
+        </div>
+        <div className="chip-row" style={{ marginTop: 8 }}>
+          {r.tipoGoogle && <span className="badge">{emoji} {r.tipoGoogle}</span>}
+          {r.cifra && <span className="badge">{r.cifra}</span>}
+          <TierTag tier={tierPorId(r.tierPrevisto)} />
+          {r.distanciaKm != null && (
+            <span className="badge">
+              {r.distanciaKm < 1 ? `${Math.round(r.distanciaKm * 1000)} m` : `${r.distanciaKm.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km`} daqui
+            </span>
+          )}
+        </div>
+        {r.endereco && <div className="muted mt8" style={{ fontSize: 13 }}>{r.endereco}</div>}
+
+        <div className="row mt16" style={{ gap: 8 }}>
+          {jaExiste ? (
+            <div className="btn ghost" style={{ flex: 1, color: 'var(--good)' }}>
+              <Check size={17} /> Já está na lista
+            </div>
+          ) : (
+            <button className="btn primary" style={{ flex: 1 }} onClick={() => onAdd(r)}>
+              <Plus size={18} /> Quero ir
+            </button>
+          )}
+          {r.mapsUrl && (
+            <a className="btn ghost" style={{ flex: 1, textDecoration: 'none' }}
+              href={r.mapsUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink size={16} /> Google Maps
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function DescobrirPage({ nav, settings, reloadSettings }) {
   const { showToast } = useFeedback()
   const places = useLiveQuery(() => db.places.toArray(), []) || []
@@ -57,6 +142,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
   const [buscando, setBuscando] = useState(false)
   const [erro, setErro] = useState(null)
   const [resultados, setResultados] = useState(null)
+  const [detalhe, setDetalhe] = useState(null)
 
   const jaTenho = useMemo(
     () => new Set(places.map(p => p.nome.trim().toLowerCase())),
@@ -178,6 +264,8 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
             const existe = jaTenho.has(r.nome.trim().toLowerCase())
             return (
               <div key={r.googleId} className="place-card">
+                <button className="row" style={{ flex: 1, minWidth: 0, textAlign: 'left', gap: 12 }}
+                  onClick={() => setDetalhe(r)}>
                 <FotoThumb src={r.fotoUrl} emoji={settings.tipos.find(t => t.id === r.tipo)?.emoji} size={72} />
                 <div className="info" style={{ flex: 1 }}>
                   <div className="nome">{r.nome}</div>
@@ -207,6 +295,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
                   </div>
                   {r.endereco && <div className="sub">{r.endereco}</div>}
                 </div>
+                </button>
                 {existe ? (
                   <span className="badge" style={{ color: 'var(--good)', borderColor: 'var(--good)' }}>✓ na lista</span>
                 ) : (
@@ -223,6 +312,13 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
             <div className="muted mt12" style={{ textAlign: 'center', fontSize: 11.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
               <ExternalLink size={11} /> Dados do Google Maps · ordenados por nota
             </div>
+          )}
+
+          {detalhe && (
+            <DetalheSheet r={detalhe} tipos={settings.tipos}
+              jaExiste={jaTenho.has(detalhe.nome.trim().toLowerCase())}
+              onAdd={async r => { await adicionar(r); setDetalhe(null) }}
+              onClose={() => setDetalhe(null)} />
           )}
         </>
       )}

@@ -369,6 +369,27 @@ textarea.input { resize: none; min-height: 84px; line-height: 1.5; }
   object-fit: cover;
 }
 
+/* ── detalhe do estabelecimento (Descobrir) ────────────────────────────── */
+.sheet-detalhe { max-height: 88vh; overflow-y: auto; }
+.galeria {
+  display: flex; gap: 8px;
+  overflow-x: auto; scroll-snap-type: x mandatory;
+  border-radius: 16px; scrollbar-width: none;
+}
+.galeria::-webkit-scrollbar { display: none; }
+.galeria img {
+  flex: 0 0 100%; width: 100%; height: 225px;
+  object-fit: cover; border-radius: 16px;
+  scroll-snap-align: center; background: var(--surface-2);
+}
+.galeria-dots { display: flex; gap: 5px; justify-content: center; margin-top: 9px; }
+.galeria-dots span {
+  width: 6px; height: 6px; border-radius: 999px;
+  background: var(--border-2); transition: all 0.2s;
+}
+.galeria-dots span.on { background: var(--accent); width: 16px; }
+.galeria-autor { text-align: center; font-size: 10.5px; color: var(--muted); margin-top: 5px; }
+
 /* ── roleta do sorteio ─────────────────────────────────────────────────── */
 .roleta {
   position: relative; overflow: hidden;
