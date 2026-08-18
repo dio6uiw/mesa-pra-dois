@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Camera, Check, MapPin, Plus, Search, Trash2, X } from 'lucide-react'
-import { db } from '../db'
+import { db, excluirVisita, fotosDaVisita, salvarFotos } from '../db'
 import { hojeISO, parseDecimal, PILARES } from '../logic'
 import { comprimirImagem } from '../img'
 import { StarInput } from '../components/StarInput'
@@ -36,7 +36,11 @@ export function VisitFormPage({ nav, params, settings }) {
   const { showToast, ask } = useFeedback()
   const editando = params.visitId != null
   const visita = useLiveQuery(
-    () => (editando ? db.visits.get(params.visitId) : Promise.resolve(null)),
+    async () => (editando ? (await db.visits.get(params.visitId)) ?? null : null),
+    [params.visitId]
+  )
+  const fotosDb = useLiveQuery(
+    () => (editando ? fotosDaVisita(params.visitId) : Promise.resolve([])),
     [params.visitId]
   )
   const places = useLiveQuery(() => db.places.toArray(), []) || []
@@ -55,22 +59,28 @@ export function VisitFormPage({ nav, params, settings }) {
   const [foi1, setFoi1] = useState(true)
   const [foi2, setFoi2] = useState(true)
   const [carregou, setCarregou] = useState(!editando)
+  const [salvando, setSalvando] = useState(false)
   const fotoRef = useRef(null)
 
   useEffect(() => {
-    if (editando && visita && !carregou) {
+    if (editando && visita && fotosDb && !carregou) {
       setPlaceId(visita.placeId)
       setData(visita.data || hojeISO())
       setPreco(visita.precoPessoa != null ? String(visita.precoPessoa).replace('.', ',') : '')
       setObs(visita.obs || '')
-      setFotos(visita.fotos || [])
+      setFotos(fotosDb.map(f => f.dataUrl))
       setN1(visita.notas?.p1 ? { ...NOTAS_VAZIAS, ...visita.notas.p1 } : { ...NOTAS_VAZIAS })
       setN2(visita.notas?.p2 ? { ...NOTAS_VAZIAS, ...visita.notas.p2 } : { ...NOTAS_VAZIAS })
       setFoi1(!!visita.notas?.p1)
       setFoi2(!!visita.notas?.p2)
       setCarregou(true)
     }
-  }, [editando, visita, carregou])
+  }, [editando, visita, fotosDb, carregou])
+
+  // Visita apagada em outra tela: nao deixa o usuario preso numa tela vazia
+  useEffect(() => {
+    if (editando && visita === null) nav.pop()
+  }, [editando, visita, nav])
 
   const lugarFixo = params.placeId != null || editando
   const lugarSel = places.find(p => p.id === placeId)
@@ -88,7 +98,33 @@ export function VisitFormPage({ nav, params, settings }) {
   const temLugar = placeId != null || (criandoNovo && nomeNovo && novoTipo)
   const podeSalvar = temLugar && temNota && (foi1 || foi2)
 
+  // Compara o formulário com o estado logo após carregar: só avisa se houve mudança real.
+  const snapshot = JSON.stringify({ placeId, data, preco: preco.trim(), obs: obs.trim(), fotos, n1, n2, foi1, foi2 })
+  const inicial = useRef(null)
+  if (inicial.current === null && carregou) inicial.current = snapshot
+  const sujo = inicial.current !== null && snapshot !== inicial.current
+
+  const confirmarDescarte = useCallback(() => ask({
+    titulo: 'Descartar esta avaliação?',
+    texto: 'Vocês preencheram dados que ainda não foram salvos.',
+    okLabel: 'Descartar', danger: true,
+  }), [ask])
+
+  // Registra o aviso também para o botão voltar do Android
+  useEffect(() => {
+    nav.setGuard(sujo ? confirmarDescarte : null)
+    return () => nav.setGuard(null)
+  }, [sujo, nav, confirmarDescarte])
+
+  async function voltar() {
+    if (sujo && !(await confirmarDescarte())) return
+    nav.setGuard(null)
+    nav.pop()
+  }
+
   async function salvar() {
+    if (salvando) return
+    setSalvando(true)
     let pid = placeId
     if (pid == null && criandoNovo) {
       pid = await db.places.add({
@@ -101,26 +137,38 @@ export function VisitFormPage({ nav, params, settings }) {
       data,
       precoPessoa: parseDecimal(preco),
       obs: obs.trim(),
-      fotos,
       notas: {
         p1: foi1 && Object.values(n1).some(v => v > 0) ? limpa(n1) : null,
         p2: foi2 && Object.values(n2).some(v => v > 0) ? limpa(n2) : null,
       },
     }
-    if (editando) {
-      await db.visits.update(params.visitId, registro)
-      showToast('Visita atualizada!')
-    } else {
-      await db.visits.add({ ...registro, criadoEm: new Date().toISOString() })
-      const lugar = await db.places.get(pid)
-      if (lugar?.wishlist) await db.places.update(pid, { wishlist: 0 })
-      const total = await db.visits.count()
-      if ([10, 25, 50, 100].includes(total)) {
-        showToast(`🎉 ${total}ª visita registrada — que jornada!`)
+    try {
+      if (editando) {
+        await db.visits.update(params.visitId, registro)
+        await salvarFotos(params.visitId, fotos)
+        showToast('Visita atualizada!')
       } else {
-        showToast('Visita salva!')
+        const vid = await db.visits.add({ ...registro, criadoEm: new Date().toISOString() })
+        await salvarFotos(vid, fotos)
+        const lugar = await db.places.get(pid)
+        if (lugar?.wishlist) await db.places.update(pid, { wishlist: 0 })
+        const total = await db.visits.count()
+        if ([10, 25, 50, 100].includes(total)) {
+          showToast(`🎉 ${total}ª visita registrada — que jornada!`)
+        } else {
+          showToast('Visita salva!')
+        }
       }
+    } catch (e) {
+      // Memória do aparelho cheia: o texto do erro varia entre navegadores.
+      const cheio = /quota|storage|full/i.test(e?.name + ' ' + e?.message)
+      showToast(cheio
+        ? 'Sem espaço no aparelho — tire algumas fotos desta visita e salve de novo'
+        : 'Não deu para salvar agora. Tente outra vez.')
+      setSalvando(false)
+      return
     }
+    nav.setGuard(null)
     nav.pop()
   }
 
@@ -130,15 +178,35 @@ export function VisitFormPage({ nav, params, settings }) {
       okLabel: 'Excluir', danger: true,
     })
     if (!ok) return
-    await db.visits.delete(params.visitId)
+    const pid = visita?.placeId
+    await excluirVisita(params.visitId)
+    // Sem nenhuma visita o lugar nao apareceria em lista alguma: volta para "Queremos ir"
+    if (pid != null && (await db.visits.where('placeId').equals(pid).count()) === 0) {
+      await db.places.update(pid, { wishlist: 1 })
+    }
     showToast('Visita excluída')
+    nav.setGuard(null)
     nav.pop()
+  }
+
+  if (editando && !carregou) {
+    return (
+      <div className="page no-tabbar">
+        <div className="stack-header">
+          <button className="icon-btn" aria-label="Voltar" onClick={() => nav.pop()}><ArrowLeft size={20} /></button>
+          <div className="title">Editar visita</div>
+        </div>
+        <div className="card esqueleto" style={{ height: 96 }} />
+        <div className="card esqueleto mt12" style={{ height: 210 }} />
+        <div className="card esqueleto mt12" style={{ height: 210 }} />
+      </div>
+    )
   }
 
   return (
     <div className="page no-tabbar">
       <div className="stack-header">
-        <button className="icon-btn" aria-label="Voltar" onClick={nav.pop}><ArrowLeft size={20} /></button>
+        <button className="icon-btn" aria-label="Voltar" onClick={voltar}><ArrowLeft size={20} /></button>
         <div className="title">{editando ? 'Editar visita' : 'Nova visita'}</div>
         {editando && <button className="icon-btn danger" aria-label="Excluir visita" onClick={excluir}><Trash2 size={17} /></button>}
       </div>
@@ -249,19 +317,19 @@ export function VisitFormPage({ nav, params, settings }) {
         )}
         <input ref={fotoRef} type="file" accept="image/*" multiple hidden
           onChange={async e => {
-            const arquivos = [...(e.target.files || [])].slice(0, MAX_FOTOS - fotos.length)
+            const arquivos = [...(e.target.files || [])]
             e.target.value = ''
             const novas = []
             for (const f of arquivos) {
               try { novas.push(await comprimirImagem(f)) }
               catch { showToast('Uma das imagens não pôde ser lida') }
             }
-            if (novas.length) setFotos([...fotos, ...novas])
+            if (novas.length) setFotos(prev => [...prev, ...novas].slice(0, MAX_FOTOS))
           }} />
       </div>
 
-      <button className="btn primary mt16" disabled={!podeSalvar} onClick={salvar}>
-        <Check size={19} /> {editando ? 'Salvar alterações' : 'Salvar visita'}
+      <button className="btn primary mt16" disabled={!podeSalvar || salvando} onClick={salvar}>
+        <Check size={19} /> {salvando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Salvar visita'}
       </button>
       {!podeSalvar && (
         <div className="muted mt8" style={{ textAlign: 'center', fontSize: 12.5 }}>

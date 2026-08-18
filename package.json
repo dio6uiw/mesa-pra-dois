@@ -1,7 +1,7 @@
 {
   "name": "mesa-pra-dois",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.7.0",
   "description": "Mesa pra Dois · diário de restaurantes do casal (Android)",
   "type": "module",
   "scripts": {

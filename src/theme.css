@@ -10,7 +10,7 @@
 
   --text: #17222f;
   --text-2: #45566b;
-  --muted: #6d7d93;
+  --muted: #66768a;        /* 4.6:1 no branco (WCAG AA texto pequeno) */
 
   --accent: #2a78d6;          /* azul */
   --accent-strong: #1c5cab;
@@ -24,14 +24,14 @@
   --serie-2: #eb6834;         /* ela  */
   --grid: #e8edf4;
 
-  /* escala da nota (sempre acompanhada do número) */
+  /* escala da nota (sempre acompanhada do número; todas ≥4,6:1 no branco) */
   --score-1: #cc4444;
-  --score-2: #c26a1e;
-  --score-3: #a8871a;
-  --score-4: #6f9433;
-  --score-5: #2a9257;
+  --score-2: #b0601b;
+  --score-3: #8b7016;
+  --score-4: #5f7f2c;
+  --score-5: #26844f;
 
-  --good: #2a9257;
+  --good: #26844f;
   --danger: #cc4444;
   --danger-soft: rgba(204, 68, 68, 0.1);
 
@@ -145,6 +145,8 @@ button { font-family: inherit; border: 0; background: none; color: inherit; curs
 }
 .icon-btn:active { background: var(--surface-3); }
 .icon-btn.danger { color: var(--danger); background: var(--danger-soft); }
+.icon-btn.sm { width: 34px; height: 34px; border-radius: 10px; color: var(--muted); }
+.icon-btn.sm:active { color: var(--danger); background: var(--danger-soft); }
 
 /* ── cards ─────────────────────────────────────────────────────────────── */
 .card {
@@ -161,8 +163,8 @@ button { font-family: inherit; border: 0; background: none; color: inherit; curs
 
 /* ── chips ─────────────────────────────────────────────────────────────── */
 .chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 12px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 14px; border-radius: 999px;
   background: var(--surface-2); border: 1px solid var(--border);
   color: var(--text-2); font-size: 13px; font-weight: 600;
   transition: all 0.15s; white-space: nowrap;
@@ -231,7 +233,8 @@ textarea.input { resize: none; min-height: 84px; line-height: 1.5; }
 .search svg { color: var(--muted); flex: 0 0 auto; }
 
 /* ── estrelas ──────────────────────────────────────────────────────────── */
-.star-input { touch-action: none; display: flex; gap: 4px; }
+/* padding vertical garante ~48px de área de toque na fileira inteira */
+.star-input { touch-action: none; display: flex; gap: 4px; padding: 6px 0; }
 .star-input .star { transition: transform 0.12s ease; }
 .star-input .star.pop { animation: star-pop 0.25s ease; }
 @keyframes star-pop { 40% { transform: scale(1.25); } }
@@ -253,9 +256,9 @@ textarea.input { resize: none; min-height: 84px; line-height: 1.5; }
 
 /* ── lista de lugares ──────────────────────────────────────────────────── */
 .place-card {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 10px;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-lg); padding: 13px 14px; margin-bottom: 10px;
+  border-radius: var(--r-lg); padding: 13px 12px 13px 14px; margin-bottom: 10px;
   transition: transform 0.1s;
 }
 .place-card:active { transform: scale(0.99); }
@@ -345,6 +348,13 @@ textarea.input { resize: none; min-height: 84px; line-height: 1.5; }
   max-width: 100%;
 }
 .toast svg { color: var(--toast-ok); flex: 0 0 auto; }
+.toast-acao {
+  display: flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  margin: -8px -8px -8px 4px; padding: 10px 10px;
+  font-size: 13.5px; font-weight: 800; color: var(--toast-ok);
+  min-height: 44px;
+}
+.toast-acao svg { color: inherit; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(14px) scale(0.95); } }
 
 /* ── sheet de confirmação ──────────────────────────────────────────────── */
@@ -549,6 +559,34 @@ textarea.input { resize: none; min-height: 84px; line-height: 1.5; }
 
 .gira { animation: gira-spin 0.9s linear infinite; }
 @keyframes gira-spin { to { transform: rotate(360deg); } }
+
+/* ── skeleton de carregamento ──────────────────────────────────────────── */
+.esqueleto {
+  background: linear-gradient(100deg, var(--surface) 30%, var(--surface-2) 50%, var(--surface) 70%);
+  background-size: 250% 100%;
+  animation: esqueleto 1.3s ease-in-out infinite;
+  border-color: transparent;
+}
+@keyframes esqueleto { from { background-position: 160% 0; } to { background-position: -60% 0; } }
+
+/* ── acessibilidade ────────────────────────────────────────────────────── */
+/* Foco visível para quem navega por teclado (PWA no desktop) */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Respeita quem pediu menos movimento no sistema */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .confete { display: none; }
+}
 
 /* util */
 .row { display: flex; align-items: center; gap: 10px; }

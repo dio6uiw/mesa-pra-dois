@@ -11,8 +11,19 @@ if (Capacitor.isNativePlatform()) {
 } else {
   // PWA: service worker p/ funcionar offline no navegador/iPhone
   import('virtual:pwa-register')
-    .then(({ registerSW }) => registerSW({ immediate: true }))
+    .then(({ registerSW }) => registerSW({
+      immediate: true,
+      onRegisteredSW(_url, reg) {
+        // iOS demora a checar sozinho: confere nova versao quando o app volta ao foco
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg?.update?.()
+        })
+      },
+    }))
     .catch(() => {})
+
+  // Evita que o iOS descarte os dados apos dias sem abrir o app
+  navigator.storage?.persist?.().catch(() => {})
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowLeft, Check } from 'lucide-react'
-import { db } from '../db'
+import { ArrowLeft, Check, Trash2 } from 'lucide-react'
+import { contarVisitas, db, excluirLugar } from '../db'
 import { TIERS } from '../logic'
 import { useFeedback } from '../components/Feedback'
 
 // Criar/editar lugar (usado principalmente pela wishlist).
 export function PlaceFormPage({ nav, params, settings }) {
-  const { showToast } = useFeedback()
+  const { showToast, ask } = useFeedback()
   const editando = params.placeId != null
   const place = useLiveQuery(
     () => (editando ? db.places.get(params.placeId) : Promise.resolve(null)),
@@ -42,6 +42,21 @@ export function PlaceFormPage({ nav, params, settings }) {
     nav.pop()
   }
 
+  async function excluir() {
+    const visitas = await contarVisitas(params.placeId)
+    const ok = await ask({
+      titulo: `Excluir ${place?.nome || 'este lugar'}?`,
+      texto: visitas > 0
+        ? `Isso apaga o lugar e as ${visitas} ${visitas === 1 ? 'visita registrada' : 'visitas registradas'}, com fotos e notas. Não dá pra desfazer.`
+        : 'O lugar será removido. Não dá pra desfazer.',
+      okLabel: 'Excluir', danger: true,
+    })
+    if (!ok) return
+    await excluirLugar(params.placeId)
+    showToast('Lugar excluído')
+    nav.pop()
+  }
+
   return (
     <div className="page no-tabbar">
       <div className="stack-header">
@@ -49,6 +64,11 @@ export function PlaceFormPage({ nav, params, settings }) {
         <div className="title">
           {editando ? 'Editar lugar' : params.wishlist ? 'Queremos ir em…' : 'Novo lugar'}
         </div>
+        {editando && (
+          <button className="icon-btn danger" aria-label="Excluir lugar" onClick={excluir}>
+            <Trash2 size={17} />
+          </button>
+        )}
       </div>
 
       <div className="field">

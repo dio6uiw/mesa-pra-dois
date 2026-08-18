@@ -3,13 +3,38 @@ import { Directory, Encoding, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 import { db, getSettings, saveSettings } from './db'
 
-export async function exportarBackup() {
-  const [settings, places, visits] = await Promise.all([
-    getSettings(), db.places.toArray(), db.visits.toArray(),
+// No arquivo as fotos seguem embutidas em cada visita (formato estável, compatível
+// com backups antigos); no banco elas vivem na tabela `fotos`.
+async function montarPayload() {
+  const [settings, places, visits, fotos] = await Promise.all([
+    getSettings(), db.places.toArray(), db.visits.toArray(), db.fotos.toArray(),
   ])
-  const payload = { app: 'mesa-pra-dois', versao: 1, exportadoEm: new Date().toISOString(), settings, places, visits }
-  const json = JSON.stringify(payload, null, 2)
+  const porVisita = new Map()
+  for (const f of fotos) {
+    if (!porVisita.has(f.visitId)) porVisita.set(f.visitId, [])
+    porVisita.get(f.visitId).push(f.dataUrl)
+  }
+  // A chave da API não vai no arquivo: o app já embute a padrão e o backup é compartilhado.
+  const { placesKey, ...settingsSemChave } = settings || {}
+  return {
+    app: 'mesa-pra-dois',
+    versao: 2,
+    exportadoEm: new Date().toISOString(),
+    settings: settingsSemChave,
+    places,
+    visits: visits.map(v => {
+      const lista = porVisita.get(v.id)
+      return lista?.length ? { ...v, fotos: lista } : v
+    }),
+    _fotos: fotos.length,
+  }
+}
+
+export async function exportarBackup() {
+  const payload = await montarPayload()
+  const json = JSON.stringify(payload) // sem indentação: com fotos já é grande
   const nome = `mesa-pra-dois-${payload.exportadoEm.slice(0, 10)}.json`
+  const blob = new Blob([json], { type: 'application/json' })
 
   if (Capacitor.isNativePlatform()) {
     const res = await Filesystem.writeFile({
@@ -17,13 +42,33 @@ export async function exportarBackup() {
     })
     await Share.share({ title: 'Backup Mesa pra Dois', files: [res.uri] })
   } else {
-    const blob = new Blob([json], { type: 'application/json' })
+    // A âncora precisa estar no documento (Firefox) e a URL só pode ser revogada
+    // depois que o download começou (Safari).
+    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
+    a.href = url
     a.download = nome
+    a.style.display = 'none'
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(a.href)
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(url) }, 2000)
   }
+  return {
+    bytes: blob.size,
+    lugares: payload.places.length,
+    visitas: payload.visits.length,
+    fotos: payload._fotos,
+  }
+}
+
+// Grava uma visita do arquivo, separando as fotos para a tabela própria.
+async function inserirVisita(visita, placeId) {
+  const { id, placeId: _pid, fotos, ...resto } = visita
+  const vid = await db.visits.add({ ...resto, placeId })
+  if (Array.isArray(fotos) && fotos.length) {
+    await db.fotos.bulkAdd(fotos.map(dataUrl => ({ visitId: vid, dataUrl })))
+  }
+  return vid
 }
 
 // modo: 'substituir' | 'mesclar'
@@ -33,66 +78,69 @@ export async function importarBackup(json, modo) {
     throw new Error('Arquivo não é um backup válido do Mesa pra Dois')
   }
 
+  let lugares = 0, visitas = 0, ignoradas = 0
+
   if (modo === 'substituir') {
-    await db.transaction('rw', db.places, db.visits, db.kv, async () => {
-      await db.places.clear()
-      await db.visits.clear()
+    await db.transaction('rw', db.places, db.visits, db.fotos, db.kv, async () => {
+      await Promise.all([db.places.clear(), db.visits.clear(), db.fotos.clear()])
       const mapa = new Map()
       for (const p of data.places) {
         const { id, ...resto } = p
         mapa.set(id, await db.places.add(resto))
+        lugares++
       }
       for (const v of data.visits) {
-        const { id, placeId, ...resto } = v
-        if (mapa.has(placeId)) await db.visits.add({ ...resto, placeId: mapa.get(placeId) })
+        if (!mapa.has(v.placeId)) { ignoradas++; continue }
+        await inserirVisita(v, mapa.get(v.placeId))
+        visitas++
       }
-      if (data.settings) await saveSettings(data.settings)
+      if (data.settings) {
+        // Preserva a chave já configurada neste aparelho (o arquivo não a traz).
+        const atual = await getSettings()
+        await saveSettings({ ...data.settings, placesKey: atual?.placesKey || '' })
+      }
     })
-    return { lugares: data.places.length, visitas: data.visits.length }
+    return { lugares, visitas, ignoradas }
   }
 
-  // mesclar: lugares casam por nome normalizado; visitas por assinatura exata
+  // mesclar: lugares casam por nome normalizado; visitas por assinatura
   const norm = s => (s || '').trim().toLowerCase()
-  let novosLugares = 0, novasVisitas = 0
-  await db.transaction('rw', db.places, db.visits, async () => {
+  await db.transaction('rw', db.places, db.visits, db.fotos, async () => {
     const atuais = await db.places.toArray()
     const porNome = new Map(atuais.map(p => [norm(p.nome), p.id]))
     const mapa = new Map()
     for (const p of data.places) {
       const { id, ...resto } = p
       const k = norm(p.nome)
-      if (porNome.has(k)) { mapa.set(id, porNome.get(k)) }
-      else {
+      if (porNome.has(k)) {
+        mapa.set(id, porNome.get(k))
+      } else {
         const novoId = await db.places.add(resto)
         porNome.set(k, novoId)
         mapa.set(id, novoId)
-        novosLugares++
+        lugares++
       }
     }
     const visitasAtuais = await db.visits.toArray()
-    const assinatura = v => `${v.placeId}|${v.data}|${JSON.stringify(v.notas)}`
+    const assinatura = v => [v.placeId, v.data, JSON.stringify(v.notas), v.precoPessoa ?? '', v.obs || ''].join('|')
     const existentes = new Set(visitasAtuais.map(assinatura))
     for (const v of data.visits) {
-      const { id, placeId, ...resto } = v
-      if (!mapa.has(placeId)) continue
-      const nova = { ...resto, placeId: mapa.get(placeId) }
-      if (!existentes.has(assinatura(nova))) {
-        await db.visits.add(nova)
-        existentes.add(assinatura(nova))
-        novasVisitas++
-      }
+      if (!mapa.has(v.placeId)) { ignoradas++; continue }
+      const chave = assinatura({ ...v, placeId: mapa.get(v.placeId) })
+      if (existentes.has(chave)) continue
+      await inserirVisita(v, mapa.get(v.placeId))
+      existentes.add(chave)
+      visitas++
     }
   })
-  return { lugares: novosLugares, visitas: novasVisitas }
+  return { lugares, visitas, ignoradas }
 }
 
 export async function apagarTudo() {
-  await db.transaction('rw', db.places, db.visits, async () => {
-    await db.places.clear()
-    await db.visits.clear()
+  await db.transaction('rw', db.places, db.visits, db.fotos, async () => {
+    await Promise.all([db.places.clear(), db.visits.clear(), db.fotos.clear()])
   })
 }
-
 // ---- dados de exemplo -------------------------------------------------------
 
 const N = (c, a, b) => ({ comida: c, atendimento: a, ambiente: b })

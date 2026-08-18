@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Download, Plus, Sparkles, Trash2, Upload, X } from 'lucide-react'
 import { db, saveSettings } from '../db'
 import { parseDecimal } from '../logic'
@@ -13,6 +13,14 @@ export function SettingsPage({ settings, reloadSettings }) {
   const [legalMax, setLegalMax] = useState(String(settings.tiers.legalMax))
   const [novoTipo, setNovoTipo] = useState('')
   const [placesKey, setPlacesKey] = useState(settings.placesKey || '')
+
+  // Importar backup troca os ajustes sem remontar a tela: reflete nos campos
+  useEffect(() => {
+    setNomes(settings.nomes)
+    setPedirMax(String(settings.tiers.pedirMax))
+    setLegalMax(String(settings.tiers.legalMax))
+    setPlacesKey(settings.placesKey || '')
+  }, [settings])
 
   async function salvarPerfil() {
     const t1 = parseDecimal(pedirMax) ?? 50
@@ -57,7 +65,8 @@ export function SettingsPage({ settings, reloadSettings }) {
       })
       if (substituir) {
         const r = await importarBackup(json, 'substituir')
-        showToast(`Importado: ${r.lugares} lugares, ${r.visitas} visitas`)
+        showToast(`Importado: ${r.lugares} lugares, ${r.visitas} visitas`
+          + (r.ignoradas ? ` (${r.ignoradas} ignoradas)` : ''))
       } else {
         const mesclar = await ask({
           titulo: 'Mesclar com os dados atuais?',
@@ -66,7 +75,8 @@ export function SettingsPage({ settings, reloadSettings }) {
         })
         if (!mesclar) return
         const r = await importarBackup(json, 'mesclar')
-        showToast(`Mesclado: +${r.lugares} lugares, +${r.visitas} visitas`)
+        showToast(`Mesclado: +${r.lugares} lugares, +${r.visitas} visitas`
+          + (r.ignoradas ? ` (${r.ignoradas} ignoradas)` : ''))
       }
       await reloadSettings()
     } catch (err) {
@@ -158,10 +168,22 @@ export function SettingsPage({ settings, reloadSettings }) {
       <div className="card mt16">
         <div className="card-label">Backup</div>
         <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-          Exporta um arquivo com tudo — manda no WhatsApp pra guardar ou pra importar no outro celular.
+          Exporta um arquivo com lugares, visitas e fotos — manda no WhatsApp pra guardar ou pra
+          importar no outro celular. A chave do Google não vai no arquivo.
         </div>
         <div className="row" style={{ gap: 8 }}>
-          <button className="btn ghost" style={{ flex: 1 }} onClick={() => exportarBackup().catch(() => {})}>
+          <button className="btn ghost" style={{ flex: 1 }} onClick={async () => {
+            try {
+              const r = await exportarBackup()
+              const mb = r.bytes / 1024 / 1024
+              const tam = mb >= 1 ? `${mb.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB` : `${Math.round(r.bytes / 1024)} KB`
+              showToast(mb > 15
+                ? `Backup de ${tam} — grande para WhatsApp, prefira Drive`
+                : `Backup de ${tam} gerado (${r.visitas} visitas)`)
+            } catch (e) {
+              if (!/abort|cancel/i.test(e?.message || '')) showToast('Não deu para exportar agora')
+            }
+          }}>
             <Upload size={17} /> Exportar
           </button>
           <button className="btn ghost" style={{ flex: 1 }} onClick={() => fileRef.current?.click()}>

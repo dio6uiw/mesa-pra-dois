@@ -27,7 +27,17 @@ export function StarInput({ value = 0, onChange, size = 38 }) {
   function valueFromX(clientX) {
     const rect = ref.current.getBoundingClientRect()
     const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    if (frac < 0.05) return 0 // faixa morta no inicio limpa a nota (toque por engano)
     return Math.max(0.5, Math.ceil(frac * 10) / 2)
+  }
+
+  function aoTeclado(e) {
+    const passo = { ArrowRight: 0.5, ArrowUp: 0.5, ArrowLeft: -0.5, ArrowDown: -0.5 }[e.key]
+    if (passo != null) {
+      e.preventDefault()
+      onChange(Math.min(5, Math.max(0, (value || 0) + passo)))
+    } else if (e.key === 'Home') { e.preventDefault(); onChange(0) }
+    else if (e.key === 'End') { e.preventDefault(); onChange(5) }
   }
 
   function apply(clientX) {
@@ -43,6 +53,14 @@ export function StarInput({ value = 0, onChange, size = 38 }) {
     <div
       ref={ref}
       className="star-input"
+      role="slider"
+      tabIndex={0}
+      aria-label="Nota de 0 a 5"
+      aria-valuemin={0}
+      aria-valuemax={5}
+      aria-valuenow={value || 0}
+      aria-valuetext={`${(value || 0).toLocaleString('pt-BR')} de 5`}
+      onKeyDown={aoTeclado}
       onPointerDown={e => { try { e.currentTarget.setPointerCapture(e.pointerId) } catch {} apply(e.clientX) }}
       onPointerMove={e => { if (e.buttons > 0) apply(e.clientX) }}
       onAnimationEnd={() => setPopIdx(-1)}

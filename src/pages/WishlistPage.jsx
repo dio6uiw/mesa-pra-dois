@@ -1,12 +1,27 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Compass, Dices, Plus, UtensilsCrossed } from 'lucide-react'
-import { db } from '../db'
+import { Compass, Dices, Plus, Trash2, UtensilsCrossed } from 'lucide-react'
+import { contarVisitas, db, excluirLugar } from '../db'
 import { tierPorId } from '../logic'
 import { FotoThumb, TierTag, TipoBadge } from '../components/Badges'
 import { EmptyState } from '../components/EmptyState'
+import { useFeedback } from '../components/Feedback'
 
 export function WishlistPage({ nav, settings }) {
+  const { showUndo } = useFeedback()
   const places = useLiveQuery(() => db.places.where('wishlist').equals(1).toArray(), []) || []
+
+  // Remoção reversível (sem modal): lugar sem visita sai do banco, com visitas apenas
+  // deixa a lista. Nos dois casos o toast oferece "Desfazer".
+  async function remover(place) {
+    const visitas = await contarVisitas(place.id)
+    if (visitas > 0) {
+      await db.places.update(place.id, { wishlist: 0 })
+      showUndo(`${place.nome} saiu da lista`, () => db.places.update(place.id, { wishlist: 1 }))
+      return
+    }
+    await excluirLugar(place.id)
+    showUndo(`${place.nome} foi removido`, () => db.places.put(place)) // restaura com o mesmo id
+  }
 
   return (
     <div className="page">
@@ -47,6 +62,10 @@ export function WishlistPage({ nav, settings }) {
           </button>
           <button className="btn primary sm" onClick={() => nav.push('visit-form', { placeId: place.id })}>
             <UtensilsCrossed size={15} /> Fomos!
+          </button>
+          <button className="icon-btn sm" aria-label={`Remover ${place.nome} da lista`}
+            onClick={() => remover(place)}>
+            <Trash2 size={16} />
           </button>
         </div>
       ))}

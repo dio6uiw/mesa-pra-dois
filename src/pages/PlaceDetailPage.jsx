@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
-import { db } from '../db'
+import { db, excluirLugar, fotosDasVisitas } from '../db'
 import { aggPlace, fmtData, fmtMoeda, fmtNota, mediaAvaliador, notaVisita, PILARES } from '../logic'
 import { ScoreBadge, TierBadge, TipoBadge } from '../components/Badges'
 import { Stars } from '../components/StarInput'
@@ -11,7 +11,10 @@ import { useFeedback } from '../components/Feedback'
 export function PlaceDetailPage({ nav, params, settings }) {
   const { showToast, ask } = useFeedback()
   const [fotoView, setFotoView] = useState(null) // { fotos, inicial }
-  const place = useLiveQuery(() => db.places.get(params.placeId), [params.placeId])
+  const place = useLiveQuery(
+    async () => (await db.places.get(params.placeId)) ?? null,
+    [params.placeId]
+  )
   const visits = useLiveQuery(
     () => db.visits.where('placeId').equals(params.placeId).toArray(),
     [params.placeId]
@@ -21,23 +24,47 @@ export function PlaceDetailPage({ nav, params, settings }) {
     () => [...visits].sort((a, b) => (b.data || '').localeCompare(a.data || '')),
     [visits]
   )
-  const album = useMemo(() => ordenadas.flatMap(v => v.fotos || []), [ordenadas])
+  // Fotos vem da tabela propria, so nesta tela (as agregadas nao carregam bytes)
+  const idsVisitas = useMemo(() => ordenadas.map(v => v.id), [ordenadas])
+  const fotosRows = useLiveQuery(() => fotosDasVisitas(idsVisitas), [idsVisitas.join(',')]) || []
+  const fotosPorVisita = useMemo(() => {
+    const m = new Map()
+    for (const f of fotosRows) {
+      if (!m.has(f.visitId)) m.set(f.visitId, [])
+      m.get(f.visitId).push(f.dataUrl)
+    }
+    return m
+  }, [fotosRows])
+  const album = useMemo(
+    () => ordenadas.flatMap(v => fotosPorVisita.get(v.id) || []),
+    [ordenadas, fotosPorVisita]
+  )
 
-  if (!place) return <div className="page no-tabbar" />
+  // Lugar excluido (aqui ou na tela de edicao): sai em vez de ficar em tela vazia
+  useEffect(() => { if (place === null) nav.pop() }, [place, nav])
+
+  if (!place) {
+    return (
+      <div className="page no-tabbar">
+        <div className="stack-header">
+          <button className="icon-btn" aria-label="Voltar" onClick={nav.pop}><ArrowLeft size={20} /></button>
+          <div className="title">Carregando…</div>
+        </div>
+        <div className="card esqueleto" style={{ height: 150 }} />
+      </div>
+    )
+  }
   const agg = aggPlace(place, visits)
   const nomes = settings.nomes
 
-  async function excluirLugar() {
+  async function remover() {
     const ok = await ask({
       titulo: `Excluir ${place.nome}?`,
       texto: `Isso apaga o lugar e ${visits.length ? `as ${visits.length} visitas registradas` : 'seu histórico'}. Não dá pra desfazer.`,
       okLabel: 'Excluir', danger: true,
     })
     if (!ok) return
-    await db.transaction('rw', db.places, db.visits, async () => {
-      await db.visits.where('placeId').equals(place.id).delete()
-      await db.places.delete(place.id)
-    })
+    await excluirLugar(place.id)
     showToast('Lugar excluído')
     nav.pop()
   }
@@ -48,7 +75,7 @@ export function PlaceDetailPage({ nav, params, settings }) {
         <button className="icon-btn" aria-label="Voltar" onClick={nav.pop}><ArrowLeft size={20} /></button>
         <div className="title">{place.nome}</div>
         <button className="icon-btn" aria-label="Editar lugar" onClick={() => nav.push('place-form', { placeId: place.id })}><Pencil size={17} /></button>
-        <button className="icon-btn danger" aria-label="Excluir lugar" onClick={excluirLugar}><Trash2 size={17} /></button>
+        <button className="icon-btn danger" aria-label="Excluir lugar" onClick={remover}><Trash2 size={17} /></button>
       </div>
 
       <div className="card">
@@ -121,11 +148,11 @@ export function PlaceDetailPage({ nav, params, settings }) {
               </div>
             )}
             {v.obs && <div className="obs">“{v.obs}”</div>}
-            {v.fotos?.length > 0 && (
+            {(fotosPorVisita.get(v.id) || []).length > 0 && (
               <div className="foto-strip mt8">
-                {v.fotos.map((f, i) => (
+                {fotosPorVisita.get(v.id).map((f, i) => (
                   <button key={i} className="foto-mini" style={{ width: 52, height: 52 }}
-                    onClick={e => { e.stopPropagation(); setFotoView({ fotos: v.fotos, inicial: i }) }}>
+                    onClick={e => { e.stopPropagation(); setFotoView({ fotos: fotosPorVisita.get(v.id), inicial: i }) }}>
                     <img src={f} alt="" loading="lazy" />
                   </button>
                 ))}

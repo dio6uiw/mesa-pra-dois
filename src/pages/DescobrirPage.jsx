@@ -26,8 +26,7 @@ function SetupChave({ settings, reloadSettings, showToast }) {
           <li>Em <b>APIs e serviços → Credenciais</b>, crie uma <b>chave de API</b> e restrinja à Places API (New)</li>
           <li>Cole a chave aqui embaixo</li>
         </ol>
-        A chave fica salva <b>só neste aparelho</b> e nunca vai para o site público. Ela vai junto no
-        arquivo de backup (prático para levar ao celular do par) — só evitem mandar o backup para outras pessoas.
+        A chave fica salva <b>só neste aparelho</b> e não vai no arquivo de backup.
       </div>
       <div className="row mt12" style={{ gap: 8 }}>
         <input className="input" placeholder="Cole a chave (AIza…)" value={chave}
@@ -191,6 +190,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
   const [erro, setErro] = useState(null)
   const [resultados, setResultados] = useState(null)
   const [detalhe, setDetalhe] = useState(null)
+  const [adicionando, setAdicionando] = useState(null)
 
   const jaTenho = useMemo(
     () => new Set(places.map(p => p.nome.trim().toLowerCase())),
@@ -228,11 +228,22 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
   }
 
   async function adicionar(r) {
-    await db.places.add({
-      nome: r.nome, tipo: r.tipo, tierPrevisto: r.tierPrevisto,
-      endereco: r.endereco, fotoUrl: r.fotoUrl, wishlist: 1, criadoEm: new Date().toISOString(),
-    })
-    showToast(`${r.nome} entrou no Queremos ir!`)
+    if (adicionando) return // duplo toque criava dois lugares iguais
+    setAdicionando(r.googleId)
+    try {
+      const nome = r.nome.trim().toLowerCase()
+      const repetido = await db.places.filter(p => p.nome.trim().toLowerCase() === nome).count()
+      if (repetido) { showToast(`${r.nome} já está na lista`); return }
+      await db.places.add({
+        nome: r.nome, tipo: r.tipo, tierPrevisto: r.tierPrevisto,
+        endereco: r.endereco, fotoUrl: r.fotoUrl, wishlist: 1, criadoEm: new Date().toISOString(),
+      })
+      showToast(`${r.nome} entrou no Queremos ir!`)
+    } catch {
+      showToast('Não deu para adicionar agora')
+    } finally {
+      setAdicionando(null)
+    }
   }
 
   const visiveis = (resultados || []).filter(r => !soAbertos || r.abertoAgora === true)
@@ -272,7 +283,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
             ) : (
               <div className="search" style={{ marginBottom: 0 }}>
                 <Search size={16} />
-                <input placeholder="Ex.: Mococa, SP" value={cidade}
+                <input type="search" enterKeyHint="search" placeholder="Ex.: Mococa, SP" value={cidade}
                   onChange={e => setCidade(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur(); buscar() } }} />
               </div>
@@ -349,7 +360,9 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
                 {existe ? (
                   <span className="badge" style={{ color: 'var(--good)', borderColor: 'var(--good)' }}>✓ na lista</span>
                 ) : (
-                  <button className="icon-btn" style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)' }}
+                  <button className="icon-btn" aria-label={`Adicionar ${r.nome} ao Queremos ir`}
+                    style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)' }}
+                    disabled={adicionando === r.googleId}
                     onClick={() => adicionar(r)}>
                     <Plus size={19} />
                   </button>
@@ -360,7 +373,7 @@ export function DescobrirPage({ nav, settings, reloadSettings }) {
 
           {resultados && (
             <div className="muted mt12" style={{ textAlign: 'center', fontSize: 11.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-              <ExternalLink size={11} /> Dados do Google Maps · ordenados por nota
+              <ExternalLink size={11} /> Powered by Google · ordenados por nota
             </div>
           )}
 

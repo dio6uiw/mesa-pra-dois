@@ -107,11 +107,25 @@ export function hojeISO() {
   return new Date(d.getTime() - off).toISOString().slice(0, 10)
 }
 
-// Aceita "45,90", "45.90", "R$ 45" → número (ou null).
+// Aceita "45,90", "45.90", "1.234,56", "R$ 45" → número (ou null).
+// Regra: o último separador é o decimal; os anteriores são de milhar.
 export function parseDecimal(str) {
   if (str == null || String(str).trim() === '') return null
-  const clean = String(str).replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')
-  const n = parseFloat(clean)
+  const s = String(str).replace(/[^\d.,-]/g, '')
+  if (s === '' || s === '-') return null
+  const ultimo = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'))
+  let bruto
+  if (ultimo < 0) {
+    bruto = s
+  } else {
+    const casas = s.length - ultimo - 1
+    // "1.234" (ponto com 3 casas e sem vírgula) é separador de milhar no pt-BR
+    const milhar = s[ultimo] === '.' && casas === 3 && !s.includes(',')
+    bruto = milhar
+      ? s.replace(/[.,]/g, '')
+      : s.slice(0, ultimo).replace(/[.,]/g, '') + '.' + s.slice(ultimo + 1)
+  }
+  const n = parseFloat(bruto)
   return Number.isFinite(n) ? n : null
 }
 
@@ -125,7 +139,9 @@ export function filtraPeriodo(visits, periodo) {
     return visits.filter(v => v.data?.startsWith(ano))
   }
   if (periodo === '90d') {
-    const lim = new Date(hoje.getTime() - 90 * 86400000).toISOString().slice(0, 10)
+    // data local (toISOString em UTC encurtava a janela quando rodava de noite)
+    const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 90)
+    const lim = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     return visits.filter(v => v.data >= lim)
   }
   return visits
@@ -223,7 +239,8 @@ export function matchCasal(visits) {
   const deltaMedio = media(pares.map(p => p.dif)) // >0: p1 dá notas maiores
   const maior = pares.reduce((a, b) => (Math.abs(b.dif) > Math.abs(a.dif) ? b : a))
   return {
-    pct: Math.round((1 - difMedia / 5) * 100),
+    // nota 0 nao entra na media, entao a distancia maxima real entre as medias e 4,5
+    pct: Math.round((1 - difMedia / 4.5) * 100),
     deltaMedio,
     maiorDiscordancia: Math.abs(maior.dif) >= 0.5 ? maior : null,
     qtdComparaveis: pares.length,

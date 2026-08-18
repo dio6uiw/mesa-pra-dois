@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
@@ -13,6 +13,7 @@ import { PlaceFormPage } from './pages/PlaceFormPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { OnboardingPage } from './pages/OnboardingPage'
+import { EmptyState } from './components/EmptyState'
 import { SortearPage } from './pages/SortearPage'
 import { DescobrirPage } from './pages/DescobrirPage'
 
@@ -42,7 +43,15 @@ export default function App() {
   const [settings, setSettings] = useState(undefined) // undefined = carregando, null = onboarding
   const [stack, setStack] = useState([{ page: 'places', params: {}, key: 0 }])
 
-  const reloadSettings = useCallback(async () => setSettings(await getSettings()), [])
+  const [erroDb, setErroDb] = useState(null)
+  const reloadSettings = useCallback(async () => {
+    try {
+      setSettings(await getSettings())
+    } catch (e) {
+      // IndexedDB indisponivel (aba privada, storage bloqueado, banco corrompido)
+      setErroDb(e?.message || 'não consegui abrir o banco de dados local')
+    }
+  }, [])
   useEffect(() => { reloadSettings() }, [reloadSettings])
 
   // Aplica o tema (claro | escuro | auto) no documento, status bar e meta theme-color
@@ -66,25 +75,44 @@ export default function App() {
     }
   }, [settings?.tema])
 
+  // Guard de saída: telas com formulário registram uma confirmação aqui.
+  const guardRef = useRef(null)
+  const stackRef = useRef(stack)
+  stackRef.current = stack
+
   const nav = useMemo(() => ({
     push: (page, params = {}) => setStack(s => [...s, { page, params, key: s.at(-1).key + 1 }]),
     pop: () => setStack(s => (s.length > 1 ? s.slice(0, -1) : s)),
     goTab: page => setStack([{ page, params: {}, key: Math.random() }]),
+    setGuard: fn => { guardRef.current = fn },
   }), [])
 
-  // Botão voltar do Android
+  // Botão voltar do Android (respeita o guard da tela atual)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
-    const sub = CapApp.addListener('backButton', () => {
-      setStack(s => {
-        if (s.length > 1) return s.slice(0, -1)
+    const sub = CapApp.addListener('backButton', async () => {
+      if (stackRef.current.length > 1) {
+        const guard = guardRef.current
+        if (guard && !(await guard())) return
+        guardRef.current = null
+        setStack(s => (s.length > 1 ? s.slice(0, -1) : s))
+      } else {
         CapApp.exitApp()
-        return s
-      })
+      }
     })
     return () => { sub.then(h => h.remove()) }
   }, [])
 
+  if (erroDb) {
+    return (
+      <div className="app">
+        <div className="page no-tabbar">
+          <EmptyState emoji="😕" titulo="Não consegui abrir os dados"
+            texto={`O app guarda tudo no próprio aparelho e ${erroDb}. Se estiver numa aba privada do navegador, abra numa aba normal; no app instalado, reabrir costuma resolver.`} />
+        </div>
+      </div>
+    )
+  }
   if (settings === undefined) return null
   if (settings === null || !settings.nomes?.p1) {
     return (
